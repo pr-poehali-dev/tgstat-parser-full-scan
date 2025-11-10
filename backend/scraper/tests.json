@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Get scan jobs list",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "jobs": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Start new scan",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "category": "marketing"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "job_id": "string",
+        "status": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

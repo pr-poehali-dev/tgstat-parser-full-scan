@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "name": "Get dashboard stats",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "totalChannels": "number",
+        "totalSubscribers": "number",
+        "categoriesScanned": "number",
+        "activeScans": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

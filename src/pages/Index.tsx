@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,68 +32,66 @@ interface Channel {
   verified: boolean;
 }
 
+const API_URLS = {
+  scraper: 'https://functions.poehali.dev/8583a14d-131b-4961-8f08-ff2da3bb0cd2',
+  channels: 'https://functions.poehali.dev/9ad1bce9-7cc8-4207-9bb3-1ae408ab90db',
+  stats: 'https://functions.poehali.dev/4286c59b-8345-4818-862d-aeafb090375c'
+};
+
 const Index = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('scan');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [scanJobs, setScanJobs] = useState<ScanJob[]>([
-    {
-      id: 'job-1',
-      category: 'Маркетинг',
-      status: 'running',
-      progress: 67,
-      channelsFound: 234,
-      startedAt: '10:45'
-    },
-    {
-      id: 'job-2',
-      category: 'PR & Реклама',
-      status: 'completed',
-      progress: 100,
-      channelsFound: 567,
-      startedAt: '09:12'
-    }
-  ]);
+  const [scanJobs, setScanJobs] = useState<ScanJob[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [channels, setChannels] = useState<Channel[]>([
-    {
-      id: '1',
-      title: 'MarketingPro',
-      link: 't.me/marketingpro',
-      subscribers: 125000,
-      tags: ['маркетинг', 'реклама', 'бизнес'],
-      admin: '@admin_marketing',
-      verified: true
-    },
-    {
-      id: '2',
-      title: 'Digital Trends',
-      link: 't.me/digitaltrends',
-      subscribers: 89000,
-      tags: ['диджитал', 'тренды'],
-      admin: '@digital_admin',
-      verified: false
-    },
-    {
-      id: '3',
-      title: 'SMM Expert',
-      link: 't.me/smmexpert',
-      subscribers: 56000,
-      tags: ['smm', 'соцсети'],
-      admin: '@smm_admin',
-      verified: true
-    }
-  ]);
+  const [channels, setChannels] = useState<Channel[]>([]);
 
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus>('cloudflare');
   const [stats, setStats] = useState({
-    totalChannels: 1247,
-    totalSubscribers: 5600000,
-    categoriesScanned: 12,
-    activeScans: 2
+    totalChannels: 0,
+    totalSubscribers: 0,
+    categoriesScanned: 0,
+    activeScans: 0
   });
 
-  const handleStartScan = () => {
+  useEffect(() => {
+    fetchStats();
+    fetchJobs();
+    fetchChannels();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(API_URLS.stats);
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchJobs = async () => {
+    try {
+      const response = await fetch(API_URLS.scraper);
+      const data = await response.json();
+      setScanJobs(data.jobs || []);
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    }
+  };
+
+  const fetchChannels = async () => {
+    try {
+      const response = await fetch(API_URLS.channels);
+      const data = await response.json();
+      setChannels(data.channels || []);
+    } catch (error) {
+      console.error('Error fetching channels:', error);
+    }
+  };
+
+  const handleStartScan = async () => {
     if (!selectedCategory) {
       toast({
         title: 'Выберите категорию',
@@ -103,20 +101,33 @@ const Index = () => {
       return;
     }
 
-    const newJob: ScanJob = {
-      id: `job-${Date.now()}`,
-      category: selectedCategory,
-      status: 'running',
-      progress: 0,
-      channelsFound: 0,
-      startedAt: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setScanJobs([newJob, ...scanJobs]);
-    toast({
-      title: 'Сканирование запущено',
-      description: `Начат полный обход категории: ${selectedCategory}`
-    });
+    setIsLoading(true);
+    try {
+      const response = await fetch(API_URLS.scraper, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: selectedCategory })
+      });
+      
+      const data = await response.json();
+      
+      toast({
+        title: 'Сканирование завершено',
+        description: `Найдено каналов: ${data.channels_found}`
+      });
+      
+      await fetchJobs();
+      await fetchChannels();
+      await fetchStats();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось запустить сканирование',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSecurityScan = () => {
@@ -262,9 +273,9 @@ const Index = () => {
                     </SelectContent>
                   </Select>
                   <Input placeholder="Или введите тег (напр. advertising)" />
-                  <Button onClick={handleStartScan} className="gap-2 bg-primary">
+                  <Button onClick={handleStartScan} className="gap-2 bg-primary" disabled={isLoading}>
                     <Icon name="Rocket" size={18} />
-                    Start Full Scan
+                    {isLoading ? 'Сканирование...' : 'Start Full Scan'}
                   </Button>
                 </div>
               </CardContent>
